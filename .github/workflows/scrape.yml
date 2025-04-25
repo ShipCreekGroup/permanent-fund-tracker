@@ -13,7 +13,9 @@ jobs:
     - name: Check out this repo
       uses: actions/checkout@v4
     - name: Fetch latest data
-      run: LLM_GEMINI_KEY={{ secrets.LLM_GEMINI_KEY }} ./scrape.sh
+      env:
+        LLM_GEMINI_KEY: ${{ secrets.LLM_GEMINI_KEY }}
+      run: LLM_GEMINI_KEY=$LLM_GEMINI_KEY ./scrape.sh
     - name: Commit and push if it changed
       run: |-
         git config user.name "Automated"
