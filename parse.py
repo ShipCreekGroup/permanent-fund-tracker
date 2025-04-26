@@ -32,7 +32,31 @@ class _PFDValueInternal(pydantic.BaseModel):
 
 class PFDValue(pydantic.BaseModel):
     date: datetime.date
-    total_amount: int
+    total_amount_listed: int
+    """The amount listed in the "Total" row of the table. Sometimes this isn't
+    actually the same as if you sum up all the lineitems!, so we keep it separate.
+
+    eg for
+    
+    | PORTFOLIO NAME                  | THURSDAY APRIL 24, 2025 |
+    | ------------------------------- | ----------------------- |
+    | Stocks                          | $26,432,400,000         |
+    | Bonds                           | $15,826,300,000         |
+    | Private Equity                  | $14,605,400,000         |
+    | Real Estate                     | $9,315,200,000          |
+    | Private Income and Infrastructure | $7,432,700,000          |
+    | Absolute Return                 | $5,938,000,000          |
+    | Tactical Opportunities          | $527,700,000            |
+    | Cash                            | $1,168,700,000          |
+    | **Total** | **$81,246,100,000** |
+    
+    It says the total amount is $81,246,100,000, but if you sum up the lineitems,
+    you get $81,246,400,000
+    """
+    total_amount_from_lineitems: int
+    """The amount you get if you sum up all the lineitems. This is not always
+    the same as total_amount_listed, so we keep it separate.
+    """
     lineitems: list[tuple[str, int]]
 
 
@@ -56,15 +80,10 @@ def parse(html: str) -> PFDValue:
     internal = _PFDValueInternal.model_validate_json(text)
     lineitem_dict = json.loads(internal.lineitem_json)
     lineitems = [(k, v) for k, v in lineitem_dict.items()]
-    amounts = [v for k, v in lineitems]
-    expected_total = sum(amounts)
-    if expected_total != internal.total_amount:
-        raise ValueError(
-            f"Total amount {expected_total} from lineitems {lineitems} does not match total {internal.total_amount} that the LLM returned"
-        )
     return PFDValue(
         date=internal.date.date(),
-        total_amount=internal.total_amount,
+        total_amount_listed=internal.total_amount,
+        total_amount_from_lineitems=sum(amount for name, amount in lineitems),
         lineitems=lineitems,
     )
 

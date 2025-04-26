@@ -1,6 +1,7 @@
 {
   "date": "2025-04-23",
-  "total_amount": 80738800000,
+  "total_amount_listed": 80738800000,
+  "total_amount_from_lineitems": 80738800000,
   "lineitems": [
     [
       "Stocks",
