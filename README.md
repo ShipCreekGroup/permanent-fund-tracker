@@ -16,4 +16,4 @@ that is stored in the `jsons/` folder.
 We do this scraping twice a day through github actions.
 
 The idea for this technique of "Git Scraping" comes from
-[Simon Wilson](https://simonwillison.net/series/git-scraping/).
+[Simon Willison](https://simonwillison.net/series/git-scraping/).
