@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alaska Permanent Fund Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #6eb0b5 0%, #288d9a 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #024050 0%, #288d9a 50%, #6eb0b5 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 300;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: #f8f9ff;
+            border-bottom: 1px solid #e1e5f0;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .chart-container {
+            padding: 30px;
+            min-height: 500px;
+        }
+
+        .chart-title {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.5rem;
+            color: #2c3e50;
+            font-weight: 300;
+        }
+
+        #chart {
+            width: 100%;
+            height: 500px;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 12px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .error-message {
+            text-align: center;
+            padding: 50px;
+            color: #dc3545;
+            font-size: 1.2rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 100px;
+            font-size: 1.2rem;
+            color: #6c757d;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #024050;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #024050 0%, #288d9a 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: transform 0.2s;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Alaska Permanent Fund Tracker</h1>
+            <p>Real-time visualization of fund components and trends</p>
+        </div>
+        
+        <div class="controls">
+            <div class="status">
+                <div class="status-item">
+                    <span>Data period: <strong id="dateRange">-</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Fund Components Over Time</div>
+            <div id="chart"></div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        let data = [];
+        let chartData = [];
+
+        async function fetchGitHubDirectory() {
+            // Try to fetch directory listing using GitHub API
+            const apiUrl = 'https://api.github.com/repos/ShipCreekGroup/permanent-fund-tracker/contents/jsons';
+            const response = await fetch(apiUrl);
+            
+            if (!response.ok) {
+                throw new Error(`GitHub API failed: ${response.status}`);
+            }
+            
+            const files = await response.json();
+            return files.filter(file => file.name.endsWith('.json')).map(file => file.download_url);
+        }
+
+        async function loadJSONFile(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) return null;
+                
+                const data = await response.json();
+                
+                // Use the date from the JSON data, fall back to filename if not available
+                const dataDate = data.date ? new Date(data.date) : null;
+                const filename = url.split('/').pop();
+                const timestampMatch = filename.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
+                const dateMatch = filename.match(/(\d{4}-\d{2}-\d{2})/);
+                const fallbackDate = timestampMatch ? new Date(timestampMatch[1]) : 
+                                   dateMatch ? new Date(dateMatch[1]) : new Date();
+                
+                return {
+                    date: dataDate || fallbackDate,
+                    filename: filename,
+                    data: data
+                };
+            } catch (error) {
+                console.warn(`Failed to load ${url}:`, error);
+                return null;
+            }
+        }
+
+        function normalizeData(rawData) {
+            const normalized = [];
+            
+            rawData.forEach(item => {
+                if (!item.data || !item.data.lineitems) return;
+                
+                const entry = { 
+                    date: item.date,
+                    total: item.data.total_amount_listed || item.data.total_amount_from_lineitems
+                };
+                
+                item.data.lineitems.forEach(lineitem => {
+                    const [name, amount] = lineitem;
+                    if (typeof amount === 'number' && amount > 0) {
+                        entry[name] = amount;
+                    }
+                });
+                
+                const hasData = Object.keys(entry).some(key => 
+                    key !== 'date' && key !== 'total' && typeof entry[key] === 'number'
+                );
+                if (hasData) {
+                    normalized.push(entry);
+                }
+            });
+            
+            // Remove duplicates by keeping the latest entry for each date
+            const dateMap = new Map();
+            normalized.forEach(entry => {
+                const dateKey = entry.date.toISOString().split('T')[0];
+                if (!dateMap.has(dateKey) || entry.date > dateMap.get(dateKey).date) {
+                    dateMap.set(dateKey, entry);
+                }
+            });
+            
+            return Array.from(dateMap.values()).sort((a, b) => a.date - b.date);
+        }
+
+        function updateDateRange(data) {
+            if (!data.length) {
+                document.getElementById('dateRange').textContent = '-';
+                return;
+            }
+            
+            const dates = data.map(d => d.date);
+            const startDate = new Date(Math.min(...dates));
+            const endDate = new Date(Math.max(...dates));
+            
+            const formatDate = (date) => date.toISOString().split('T')[0];
+            
+            document.getElementById('dateRange').textContent = 
+                `${formatDate(startDate)} to ${formatDate(endDate)}`;
+        }
+
+        function updateStatus(text, type = 'loading') {
+            // Status function kept for internal use but no longer updates UI
+        }
+
+        function getVegaSpec(data) {
+            if (!data.length) {
+                return {
+                    $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+                    description: 'No data available',
+                    data: {values: []},
+                    mark: 'text',
+                    encoding: {
+                        text: {value: 'No data available'}
+                    }
+                };
+            }
+            const keys = Object.keys(data[0]).filter(key => key !== 'date' && key !== 'total');
+            if (!keys.length) {
+                return {
+                    $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+                    description: 'No numeric data found',
+                    data: {values: []},
+                    mark: 'text',
+                    encoding: {
+                        text: {value: 'No numeric data found'}
+                    }
+                };
+            }
+            const melt = [];
+            data.forEach(row => {
+                keys.forEach(key => {
+                    if (typeof row[key] === 'number') {
+                        melt.push({
+                            date: row.date,
+                            key: key,
+                            value: row[key],
+                            total: row.total,
+                            percentage: row.total ? (row[key] / row.total) * 100 : 0
+                        });
+                    }
+                });
+            });
+            return {
+                $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+                description: 'Stacked Area Chart',
+                width: 800,
+                height: 400,
+                data: {values: melt},
+                mark: {type: 'area', interpolate: 'monotone'},
+                encoding: {
+                    x: {field: 'date', type: 'temporal', title: 'Date'},
+                    y: {field: 'value', type: 'quantitative', stack: 'zero', title: 'Amount (USD)', axis: {format: '$~s'}},
+                    color: {field: 'key', type: 'nominal', title: 'Component'},
+                    tooltip: [
+                        {field: 'key', type: 'nominal', title: 'Component'},
+                        {field: 'date', type: 'temporal', title: 'Date'},
+                        {field: 'value', type: 'quantitative', title: 'Value', format: ',.0f'},
+                        {field: 'total', type: 'quantitative', title: 'Total Fund', format: ',.0f'},
+                        {field: 'percentage', type: 'quantitative', title: 'Percentage', format: '.1f'}
+                    ]
+                },
+                config: {
+                    axis: {labelFontSize: 12, titleFontSize: 12},
+                    legend: {orient: 'right'}
+                }
+            };
+        }
+
+        async function loadData() {
+            updateStatus('Loading data...', 'loading');
+            document.getElementById('dateRange').textContent = '-';
+            try {
+                const fileUrls = await fetchGitHubDirectory();
+                updateStatus(`Found ${fileUrls.length} potential files, loading...`, 'loading');
+                const loadPromises = fileUrls.map(url => loadJSONFile(url));
+                const results = await Promise.all(loadPromises);
+                const validData = results.filter(result => result !== null);
+                if (validData.length === 0) throw new Error('No valid JSON files found');
+                const normalizedData = normalizeData(validData);
+                if (normalizedData.length === 0) throw new Error('No valid data found in JSON files');
+                chartData = normalizedData;
+                const spec = getVegaSpec(chartData);
+                vegaEmbed('#chart', spec, {actions: false});
+                updateDateRange(chartData);
+                updateStatus(`Successfully loaded ${validData.length} files`, 'success');
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                vegaEmbed('#chart', {
+                    $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+                    description: 'Error',
+                    data: {values: []},
+                    mark: 'text',
+                    encoding: {
+                        text: {value: 'Failed to load data. Please check the repository and try again.'}
+                    }
+                }, {actions: false});
+            }
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
