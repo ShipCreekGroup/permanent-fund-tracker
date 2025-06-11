@@ -354,7 +354,7 @@
                 mark: {type: 'area', interpolate: 'monotone'},
                 encoding: {
                     x: {field: 'date', type: 'temporal', title: 'Date'},
-                    y: {field: 'value', type: 'quantitative', stack: 'zero', title: 'Amount (USD)', axis: {format: '$~s'}},
+                    y: {field: 'value', type: 'quantitative', stack: 'zero', title: 'Amount (Billions USD)', axis: {format: '.1f', labelExpr: "'$' + (datum.value / 1000000000) + 'B'"}},
                     color: {field: 'key', type: 'nominal', title: 'Component'},
                     tooltip: [
                         {field: 'key', type: 'nominal', title: 'Component'},
