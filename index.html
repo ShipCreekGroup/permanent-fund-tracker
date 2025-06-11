@@ -11,10 +11,16 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             background: linear-gradient(135deg, #6eb0b5 0%, #288d9a 100%);
             min-height: 100vh;
             color: #333;
+        }
+
+        @media (min-width: 768px) {
+            body {
+                padding: 20px;
+            }
         }
 
         .container {
@@ -26,30 +32,61 @@
             overflow: hidden;
         }
 
+        @media (max-width: 767px) {
+            .container {
+                border-radius: 10px;
+                box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            }
+        }
+
         .header {
             background: linear-gradient(135deg, #024050 0%, #288d9a 50%, #6eb0b5 100%);
             color: white;
-            padding: 30px;
+            padding: 20px;
             text-align: center;
+        }
+
+        @media (min-width: 768px) {
+            .header {
+                padding: 30px;
+            }
         }
 
         .header h1 {
             margin: 0;
-            font-size: 2.5rem;
+            font-size: 1.8rem;
             font-weight: 300;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        @media (min-width: 768px) {
+            .header h1 {
+                font-size: 2.5rem;
+            }
         }
 
         .header p {
             margin: 10px 0 0 0;
             opacity: 0.9;
-            font-size: 1.1rem;
+            font-size: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .header p {
+                font-size: 1.1rem;
+            }
         }
 
         .controls {
-            padding: 20px 30px;
+            padding: 15px 20px;
             background: #f8f9ff;
             border-bottom: 1px solid #e1e5f0;
+        }
+
+        @media (min-width: 768px) {
+            .controls {
+                padding: 20px 30px;
+            }
         }
 
         .status {
@@ -77,21 +114,42 @@
         }
 
         .chart-container {
-            padding: 30px;
-            min-height: 500px;
+            padding: 20px;
+            min-height: 400px;
+        }
+
+        @media (min-width: 768px) {
+            .chart-container {
+                padding: 30px;
+                min-height: 500px;
+            }
         }
 
         .chart-title {
             text-align: center;
-            margin-bottom: 30px;
-            font-size: 1.5rem;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
             color: #2c3e50;
             font-weight: 300;
         }
 
+        @media (min-width: 768px) {
+            .chart-title {
+                margin-bottom: 30px;
+                font-size: 1.5rem;
+            }
+        }
+
         #chart {
             width: 100%;
-            height: 500px;
+            height: 350px;
+            overflow-x: auto;
+        }
+
+        @media (min-width: 768px) {
+            #chart {
+                height: 500px;
+            }
         }
 
         .legend {
@@ -187,7 +245,7 @@
     <div class="container">
         <div class="header">
             <h1>Alaska Permanent Fund Tracker</h1>
-            <p>Real-time visualization of fund components and trends</p>
+            <p>How has the value of the fund changed over time?</p>
         </div>
         
         <div class="controls">
@@ -348,13 +406,17 @@
             return {
                 $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
                 description: 'Stacked Area Chart',
-                width: 800,
-                height: 400,
+                width: 'container',
+                height: 300,
+                autosize: {
+                    type: 'fit',
+                    contains: 'padding'
+                },
                 data: {values: melt},
                 mark: {type: 'area', interpolate: 'monotone'},
                 encoding: {
                     x: {field: 'date', type: 'temporal', title: 'Date'},
-                    y: {field: 'value', type: 'quantitative', stack: 'zero', title: 'Amount (Billions USD)', axis: {format: '.1f', labelExpr: "'$' + (datum.value / 1000000000) + 'B'"}},
+                    y: {field: 'value', type: 'quantitative', stack: 'zero', title: 'Amount', axis: {format: '.1f', labelExpr: "'$' + (datum.value / 1000000000) + 'B'"}},
                     color: {field: 'key', type: 'nominal', title: 'Component'},
                     tooltip: [
                         {field: 'key', type: 'nominal', title: 'Component'},
@@ -365,8 +427,8 @@
                     ]
                 },
                 config: {
-                    axis: {labelFontSize: 12, titleFontSize: 12},
-                    legend: {orient: 'right'}
+                    axis: {labelFontSize: 10, titleFontSize: 11},
+                    legend: {orient: window.innerWidth < 768 ? 'bottom' : 'right', symbolSize: 60}
                 }
             };
         }
@@ -384,8 +446,7 @@
                 const normalizedData = normalizeData(validData);
                 if (normalizedData.length === 0) throw new Error('No valid data found in JSON files');
                 chartData = normalizedData;
-                const spec = getVegaSpec(chartData);
-                vegaEmbed('#chart', spec, {actions: false});
+                renderChart();
                 updateDateRange(chartData);
                 updateStatus(`Successfully loaded ${validData.length} files`, 'success');
             } catch (error) {
@@ -401,6 +462,21 @@
                 }, {actions: false});
             }
         }
+
+        function renderChart() {
+            const spec = getVegaSpec(chartData);
+            vegaEmbed('#chart', spec, {actions: false});
+        }
+
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (chartData.length > 0) {
+                    renderChart();
+                }
+            }, 300);
+        });
 
         loadData();
     </script>
