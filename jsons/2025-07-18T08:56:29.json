@@ -1,0 +1,39 @@
+{
+  "date": "2025-07-16",
+  "total_amount_listed": 83994500000,
+  "total_amount_from_lineitems": 83994500000,
+  "lineitems": [
+    [
+      "Stocks",
+      27191300000
+    ],
+    [
+      "Bonds",
+      16853900000
+    ],
+    [
+      "Private Equity",
+      14593300000
+    ],
+    [
+      "Real Estate",
+      8767300000
+    ],
+    [
+      "Private Income and Infrastructure",
+      7577200000
+    ],
+    [
+      "Absolute Return",
+      5911100000
+    ],
+    [
+      "Tactical Opportunities",
+      850500000
+    ],
+    [
+      "Cash",
+      2249900000
+    ]
+  ]
+}
