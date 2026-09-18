@@ -70,7 +70,7 @@ def get_html(path: str | None = None) -> str:
 
 
 def parse(html: str) -> PFDValue:
-    model = llm.get_model("gemini-2.0-flash")
+    model = llm.get_model("gemini-flash-latest")
     prompt = f"""
     Get the breakdown of the current (daily updated) value of the PFD portfolio from the following HTML:
     {html}
