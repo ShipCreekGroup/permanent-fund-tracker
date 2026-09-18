@@ -8,6 +8,10 @@ The only historical data we can find is monthly summaries.
 This doesn't have the needed granularity to capture some
 rapid fluctuations, like are happening now, in April 2025.
 
+Github suspended running the daily scraper in Dec 2025 due to inactivity in
+this repository. I just noticed in Sep 2026, so there is a ~9 month
+gap in data coverage in there.
+
 We first store the raw HTML (about 206kb per page as of april 2025)
 in the `htmls/` folder. This is so we have the raw source of truth
 and can re-compute derived metrics later as needed.
