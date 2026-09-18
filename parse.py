@@ -17,6 +17,9 @@ import fire
 import llm
 import pydantic
 
+DEFAULT_MODEL = "gemini-2.5-flash"
+FALLBACK_MODELS = (DEFAULT_MODEL, "gemini-flash-latest")
+
 
 class _PFDValueInternal(pydantic.BaseModel):
     date: datetime.datetime
@@ -70,7 +73,7 @@ def get_html(path: str | None = None) -> str:
 
 
 def parse(html: str) -> PFDValue:
-    model = llm.get_model("gemini-2.0-flash")
+    model = get_model()
     prompt = f"""
     Get the breakdown of the current (daily updated) value of the PFD portfolio from the following HTML:
     {html}
@@ -85,6 +88,17 @@ def parse(html: str) -> PFDValue:
         total_amount_listed=internal.total_amount,
         total_amount_from_lineitems=sum(amount for name, amount in lineitems),
         lineitems=lineitems,
+    )
+
+
+def get_model() -> llm.Model:
+    for model_name in FALLBACK_MODELS:
+        try:
+            return llm.get_model(model_name)
+        except llm.UnknownModelError:
+            continue
+    raise llm.UnknownModelError(
+        "Unknown Gemini model aliases: " + ", ".join(FALLBACK_MODELS)
     )
 
 
