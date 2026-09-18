@@ -3,8 +3,9 @@ name: Scrape latest data
 on:
   workflow_dispatch:
   schedule:
-    # run it twice per day just to combat flakiness
-    - cron: '38 8,17 * * *'
+    # Hourly; scrape.sh skips if today was already scraped, so this retries
+    # failed scrapes (eg the LLM being overloaded) until one succeeds.
+    - cron: '38 * * * *'
 
 jobs:
   scheduled:

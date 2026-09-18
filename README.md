@@ -17,7 +17,9 @@ in the `htmls/` folder. This is so we have the raw source of truth
 and can re-compute derived metrics later as needed.
 We also run the HTML through an LLM to get structured data out,
 that is stored in the `jsons/` folder.
-We do this scraping twice a day through github actions.
+We scrape once per day through github actions. The action runs hourly,
+and skips if that (UTC) day already has a successful scrape, so transient
+failures get retried the next hour.
 
 The idea for this technique of "Git Scraping" comes from
 [Simon Willison](https://simonwillison.net/series/git-scraping/).
