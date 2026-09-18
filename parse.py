@@ -10,6 +10,7 @@
 import datetime
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -69,6 +70,45 @@ def get_html(path: str | None = None) -> str:
     return Path(path).read_text()
 
 
+class ValidationError(ValueError):
+    pass
+
+
+# APFC sometimes leaves the page un-updated for a few days (lags of 6 days
+# have been observed), so allow some slack before calling a date wrong.
+MAX_DATE_LAG = datetime.timedelta(days=14)
+
+
+def dollar_amounts_in(html: str) -> set[int]:
+    """Every dollar amount in the HTML, with punctuation ignored.
+
+    APFC's page has typos like "$1,643.000,000", so compare digits only.
+    Some versions of the page put a non-breaking space after the "$".
+    """
+    matches = re.findall(r"\$(?:\s|&nbsp;)*(\d[\d,.]*)", html)
+    return {int(re.sub(r"\D", "", m)) for m in matches}
+
+
+def validate(val: PFDValue, html: str, scraped_at: datetime.datetime) -> None:
+    """Sanity-check LLM output, since the LLM occasionally makes things up.
+
+    eg it once returned the date "0805-08-05" for a page that said
+    "Tuesday August 5, 2025".
+
+    This deliberately does not require the lineitems to sum to the total:
+    APFC's own numbers sometimes don't add up, and PFDValue records both.
+    """
+    lag = scraped_at.date() - val.date
+    if not (datetime.timedelta(0) <= lag <= MAX_DATE_LAG):
+        raise ValidationError(
+            f"date {val.date} is not within {MAX_DATE_LAG.days} days before the scrape time {scraped_at}"
+        )
+    amounts_in_html = dollar_amounts_in(html)
+    for name, amount in [("total", val.total_amount_listed), *val.lineitems]:
+        if amount not in amounts_in_html:
+            raise ValidationError(f"amount for {name!r} (${amount:,}) does not appear in the HTML")
+
+
 def parse(html: str) -> PFDValue:
     model = llm.get_model("gemini-flash-latest")
     prompt = f"""
@@ -88,17 +128,36 @@ def parse(html: str) -> PFDValue:
     )
 
 
-def cli(path: str | None = None) -> None:
-    """
+def default_scraped_at(path: str | None) -> datetime.datetime:
+    """Files in htmls/ are named by their UTC scrape time; anything else was scraped now."""
+    if path is not None:
+        try:
+            return datetime.datetime.fromisoformat(Path(path).stem)
+        except ValueError:
+            pass
+    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+
+
+def cli(path: str | None = None, scraped_at: str | None = None) -> None:
+    r"""
     Usage:
         LLM_GEMINI_KEY=... uv run parse.py htmls/2025-04-25T00\:20\:01.html
         or
         curl https://apfc.org/performance | LLM_GEMINI_KEY=... uv run parse.py
+
+    scraped_at is the UTC time the HTML was fetched, eg 2025-04-25T00:20:01.
+    It defaults to the filename's timestamp if there is one, otherwise now.
+    Exits with an error if the parsed values fail validation.
     """
     if "LLM_GEMINI_KEY" not in os.environ:
         raise ValueError("LLM_GEMINI_KEY not set")
     html = get_html(path)
     val = parse(html)
+    if scraped_at is None:
+        scraped_at_dt = default_scraped_at(path)
+    else:
+        scraped_at_dt = datetime.datetime.fromisoformat(scraped_at)
+    validate(val, html, scraped_at_dt)
     print(val.model_dump_json(indent=2))
 
 
