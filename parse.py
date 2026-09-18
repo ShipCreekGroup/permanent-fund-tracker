@@ -1,10 +1,10 @@
 # /// script
-# requires-python = ">=3.11"
+# requires-python = "==3.14.*"
 # dependencies = [
-#     "fire",
-#     "llm",
-#     "llm-gemini",
-#     "pydantic",
+#     "fire==0.7.1",
+#     "llm==0.35",
+#     "llm-gemini==0.34",
+#     "pydantic==2.13.5",
 # ]
 # ///
 import datetime
