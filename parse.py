@@ -8,7 +8,6 @@
 # ]
 # ///
 import datetime
-import json
 import os
 import re
 import sys
@@ -19,16 +18,22 @@ import llm
 import pydantic
 
 
+class _LineItem(pydantic.BaseModel):
+    name: str
+    amount: int
+
+
 class _PFDValueInternal(pydantic.BaseModel):
-    date: datetime.datetime
+    """The schema sent to the LLM.
+
+    PFDValue can't be used directly: pydantic describes `list[tuple[str, int]]`
+    with the JSON Schema keyword `prefixItems`, which llm-gemini passes to
+    Gemini's `response_schema`, and that rejects it.
+    """
+
+    date: datetime.date
     total_amount: int
-    # We need this indirection because apparently either gemini or the LLM python
-    # lib can't handle a `list[tuple[str, int]]` type hint directly.
-    lineitem_json: str = pydantic.Field(
-        # This is needed so that this is sent in the jsonschema to the LLM
-        # so that it respects the format.
-        description="""The lineitems in a format such as '{"Equity": 10000, "Fixed Income", 250000}'""",
-    )
+    lineitems: list[_LineItem]
 
 
 class PFDValue(pydantic.BaseModel):
@@ -118,10 +123,9 @@ def parse(html: str) -> PFDValue:
     response = model.prompt(prompt, schema=_PFDValueInternal)
     text = response.text()
     internal = _PFDValueInternal.model_validate_json(text)
-    lineitem_dict = json.loads(internal.lineitem_json)
-    lineitems = [(k, v) for k, v in lineitem_dict.items()]
+    lineitems = [(item.name, item.amount) for item in internal.lineitems]
     return PFDValue(
-        date=internal.date.date(),
+        date=internal.date,
         total_amount_listed=internal.total_amount,
         total_amount_from_lineitems=sum(amount for name, amount in lineitems),
         lineitems=lineitems,
