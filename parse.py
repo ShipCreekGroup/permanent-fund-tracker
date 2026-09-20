@@ -114,14 +114,36 @@ def validate(val: PFDValue, html: str, scraped_at: datetime.datetime) -> None:
             raise ValidationError(f"amount for {name!r} (${amount:,}) does not appear in the HTML")
 
 
+# Tried in order. Gemini models return "This model is currently experiencing
+# high demand" errors during demand spikes, and each model has its own
+# capacity, so a busy model is skipped in favor of the next one.
+MODEL_IDS = [
+    "gemini-flash-latest",
+    "gemini-2.5-flash",
+    "gemini-flash-lite-latest",
+    "gemini-3.1-pro-preview",
+]
+
+
+def prompt_with_fallback(prompt: str, schema: type[pydantic.BaseModel]) -> str:
+    """Return the text of the first model in MODEL_IDS that responds without an error."""
+    errors: list[str] = []
+    for model_id in MODEL_IDS:
+        model = llm.get_model(model_id)
+        try:
+            return model.prompt(prompt, schema=schema).text()
+        except llm.ModelError as e:
+            print(f"{model_id} failed, trying the next model: {e}", file=sys.stderr)
+            errors.append(f"{model_id}: {e}")
+    raise llm.ModelError("All models failed:\n" + "\n".join(errors))
+
+
 def parse(html: str) -> PFDValue:
-    model = llm.get_model("gemini-flash-latest")
     prompt = f"""
     Get the breakdown of the current (daily updated) value of the PFD portfolio from the following HTML:
     {html}
     """
-    response = model.prompt(prompt, schema=_PFDValueInternal)
-    text = response.text()
+    text = prompt_with_fallback(prompt, _PFDValueInternal)
     internal = _PFDValueInternal.model_validate_json(text)
     lineitems = [(item.name, item.amount) for item in internal.lineitems]
     return PFDValue(
