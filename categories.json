@@ -1,0 +1,16 @@
+{
+  "categories": [
+    "Stocks",
+    "Bonds",
+    "Private Equity",
+    "Real Estate",
+    "Private Income and Infrastructure",
+    "Absolute Return",
+    "Tactical Opportunities",
+    "Cash"
+  ],
+  "aliases": {
+    "Public Equities/Stocks": "Stocks",
+    "Fixed Income/Bonds": "Bonds"
+  }
+}

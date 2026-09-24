@@ -21,5 +21,12 @@ We scrape once per day through github actions. The action runs hourly,
 and skips if that (UTC) day already has a successful scrape, so transient
 failures get retried the next hour.
 
+The scrape saves APFC's category names exactly as they appear on the page.
+APFC sometimes renames rows (eg "Stocks" became "Public Equities/Stocks"),
+so `categories.json` lists the known categories and their other names, and
+the chart uses it to keep each category as one series. After each scrape,
+`check_categories.py` fails the GitHub Action if a category is unknown or
+missing. The data is still saved. Fix it by updating `categories.json`.
+
 The idea for this technique of "Git Scraping" comes from
 [Simon Willison](https://simonwillison.net/series/git-scraping/).

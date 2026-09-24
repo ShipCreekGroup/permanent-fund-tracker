@@ -24,3 +24,7 @@ LLM_GEMINI_KEY=$LLM_GEMINI_KEY uv run parse.py "$html_tmp" > "$json_tmp"
 
 mv "$html_tmp" "htmls/$datestring.html"
 mv "$json_tmp" "jsons/$datestring.json"
+
+# Fail (after saving) if APFC's categories changed. The workflow still
+# commits the data, and the failed run triggers GitHub's failure email.
+uv run check_categories.py "jsons/$datestring.json"

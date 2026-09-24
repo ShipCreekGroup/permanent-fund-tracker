@@ -308,14 +308,17 @@
             }
         }
 
-        // APFC renamed some rows on its page around 2026. Map new labels to
-        // the original ones so each category is one continuous series.
-        const CATEGORY_ALIASES = {
-            'Public Equities/Stocks': 'Stocks',
-            'Fixed Income/Bonds': 'Bonds',
-        };
+        // categories.json maps names APFC has renamed rows to (eg
+        // "Public Equities/Stocks") to the original names, so each category
+        // is one continuous series. check_categories.py uses the same file.
+        async function fetchCategoryAliases() {
+            const url = 'https://raw.githubusercontent.com/ShipCreekGroup/permanent-fund-tracker/main/categories.json';
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Could not load categories.json: ${response.status}`);
+            return (await response.json()).aliases;
+        }
 
-        function normalizeData(rawData) {
+        function normalizeData(rawData, aliases) {
             const normalized = [];
             
             rawData.forEach(item => {
@@ -328,7 +331,7 @@
                 
                 item.data.lineitems.forEach(lineitem => {
                     const [rawName, amount] = lineitem;
-                    const name = CATEGORY_ALIASES[rawName] || rawName;
+                    const name = aliases[rawName] || rawName;
                     if (typeof amount === 'number' && amount > 0) {
                         entry[name] = amount;
                     }
@@ -449,13 +452,13 @@
             updateStatus('Loading data...', 'loading');
             document.getElementById('dateRange').textContent = '-';
             try {
-                const fileUrls = await fetchGitHubDirectory();
+                const [fileUrls, aliases] = await Promise.all([fetchGitHubDirectory(), fetchCategoryAliases()]);
                 updateStatus(`Found ${fileUrls.length} potential files, loading...`, 'loading');
                 const loadPromises = fileUrls.map(url => loadJSONFile(url));
                 const results = await Promise.all(loadPromises);
                 const validData = results.filter(result => result !== null);
                 if (validData.length === 0) throw new Error('No valid JSON files found');
-                const normalizedData = normalizeData(validData);
+                const normalizedData = normalizeData(validData, aliases);
                 if (normalizedData.length === 0) throw new Error('No valid data found in JSON files');
                 chartData = normalizedData;
                 renderChart();
