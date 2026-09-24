@@ -308,6 +308,13 @@
             }
         }
 
+        // APFC renamed some rows on its page around 2026. Map new labels to
+        // the original ones so each category is one continuous series.
+        const CATEGORY_ALIASES = {
+            'Public Equities/Stocks': 'Stocks',
+            'Fixed Income/Bonds': 'Bonds',
+        };
+
         function normalizeData(rawData) {
             const normalized = [];
             
@@ -320,7 +327,8 @@
                 };
                 
                 item.data.lineitems.forEach(lineitem => {
-                    const [name, amount] = lineitem;
+                    const [rawName, amount] = lineitem;
+                    const name = CATEGORY_ALIASES[rawName] || rawName;
                     if (typeof amount === 'number' && amount > 0) {
                         entry[name] = amount;
                     }
@@ -378,7 +386,10 @@
                     }
                 };
             }
-            const keys = Object.keys(data[0]).filter(key => key !== 'date' && key !== 'total');
+            // Collect categories from every row, not just the first, so a
+            // category that appears later isn't silently dropped.
+            const keys = [...new Set(data.flatMap(row => Object.keys(row)))]
+                .filter(key => key !== 'date' && key !== 'total');
             if (!keys.length) {
                 return {
                     $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
