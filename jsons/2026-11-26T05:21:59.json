@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-23",
+  "total_amount_listed": 87890900000,
+  "total_amount_from_lineitems": 87890900000,
+  "lineitems": [
+    [
+      "Public Equities/Stocks",
+      30146100000
+    ],
+    [
+      "Fixed Income/Bonds",
+      18631900000
+    ],
+    [
+      "Private Equity",
+      14531100000
+    ],
+    [
+      "Real Estate",
+      8056500000
+    ],
+    [
+      "Private Income and Infrastructure",
+      7171600000
+    ],
+    [
+      "Absolute Return",
+      7331400000
+    ],
+    [
+      "Tactical Opportunities",
+      897100000
+    ],
+    [
+      "Cash",
+      1125200000
+    ]
+  ]
+}
